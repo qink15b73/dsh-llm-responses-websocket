@@ -1,0 +1,67 @@
+{
+  "name": "dsh-llm-responses-websocket",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Optional DSH bundle that routes compatible OpenAI Responses providers over WebSocket",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qink1986/dsh-llm-responses-websocket.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qink1986/dsh-llm-responses-websocket/issues"
+  },
+  "homepage": "https://github.com/qink1986/dsh-llm-responses-websocket#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "openai-responses",
+    "websocket"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check client.js && node --check index.js && node --check parser.js && node --check router.js && node --check serializer.js && node --check transport.js"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./client": "./client.js",
+    "./parser": "./parser.js",
+    "./serializer": "./serializer.js",
+    "./router": "./router.js"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "router.js",
+    "parser.js",
+    "serializer.js",
+    "transport.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "dsh": "0.2.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-launch-environment": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm-pi-ai-native": "npm:@deepseek-ai/dsh-llm-pi-ai@0.2.2-rc.1",
+    "ws": "^8.18.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings-models"
+      ],
+      "platform": "web"
+    }
+  }
+}
