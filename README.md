@@ -25,7 +25,7 @@ model metadata, request-header hooks, and ordinary HTTP/SSE requests.
 Install into a DSH profile using its plugin manager:
 
 ```powershell
-dsh plugin --profile desktop add github:qink1986/dsh-llm-responses-websocket
+dsh plugin --profile desktop add github:qink15b73/dsh-llm-responses-websocket
 ```
 
 Restart or reload DSH after installation. The bundle appears in the **Plugins**
