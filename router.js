@@ -14,7 +14,10 @@ const HANDSHAKE_RETRY_DELAY_MS = 250;
 const CALL_ID_MAX_LENGTH = 64;
 
 function profileFor(profiles, provider) {
-  const profile = profiles?.[provider];
+  const profile =
+    typeof profiles?.get === "function"
+      ? profiles.get(provider)
+      : profiles?.[provider];
   return profile && typeof profile === "object" ? profile : undefined;
 }
 
@@ -75,9 +78,9 @@ function profileSnapshot(profile) {
 
 async function resolveApiKey(ctx, piAdapter, provider, reference) {
   if (
-    typeof piAdapter.current === "function" &&
-    typeof piAdapter.profileOf === "function" &&
-    typeof piAdapter.config?.resolveApiKey === "function"
+    typeof piAdapter?.current === "function" &&
+    typeof piAdapter?.profileOf === "function" &&
+    typeof piAdapter?.config?.resolveApiKey === "function"
   ) {
     const snapshot = piAdapter.current();
     const nativeProfile = piAdapter.profileOf(snapshot, provider);
@@ -237,7 +240,7 @@ export class ResponsesWebSocketRouter extends LlmAdapter {
   }
 
   async requestHeaders(options, profile) {
-    const prepare = this.piAdapter.config?.prepareHeaders;
+    const prepare = this.piAdapter?.config?.prepareHeaders;
     try {
       const headers = new Headers(profile.headers);
       const request = Object.freeze({
@@ -249,10 +252,14 @@ export class ResponsesWebSocketRouter extends LlmAdapter {
           : { sessionId: options.sessionId }),
         ...(options.purpose === undefined ? {} : { purpose: options.purpose }),
       });
-      const prepared =
-        typeof prepare === "function"
-          ? await prepare(request, headers)
-          : headers;
+      const prepared = typeof prepare === "function"
+        ? await prepare(request, headers)
+        : await this.ctx.waterfall(
+          "llm-pi-ai/request-headers",
+          request,
+          headers,
+          () => headers,
+        );
       const result = new Headers(prepared);
       for (const [name, value] of Object.entries(attributionHeaders())) {
         result.set(name, value);

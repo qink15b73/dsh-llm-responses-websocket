@@ -3,8 +3,10 @@
 An optional [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness)
 bundle that routes compatible OpenAI Responses providers over WebSocket.
 
-> **Compatibility:** developed against DSH `0.2.2-rc.1`. DSH is pre-release
-> software; validate this bundle against the DSH version you run.
+> **Compatibility:** supports DSH `>=0.2.2-0 <0.3.0-0`; validated against
+> Desktop `0.2.2-rc.2`. DSH is pre-release software, so validate this bundle
+> against the DSH version you run. DSH `0.3.0` and later require a new
+> compatibility check before use.
 
 ## What it does
 
@@ -12,13 +14,18 @@ DSH's native **Settings > Models** provider list remains the sole source of
 provider configuration. This bundle adds **Use compatible Responses WebSocket**
 to OpenAI Responses-compatible provider cards.
 
-When the bundle is enabled, its patch replaces DSH's `llm-pi-ai` adapter with a
-router. The router sends a provider through WebSocket only when that provider
-uses a compatible Responses protocol and its transport is set to `websocket`.
-All other routes stay on the native pi-ai adapter.
+When the bundle is enabled, it adds an `llm/stream` middleware beside DSH's
+native `llm-pi-ai` adapter. The middleware sends a provider through WebSocket
+only when that provider uses a compatible Responses protocol and its transport
+is set to `websocket`. All other routes continue through native pi-ai dispatch.
 
 The native adapter continues to own provider discovery, settings, credentials,
 model metadata, request-header hooks, and ordinary HTTP/SSE requests.
+
+The bundle declares the native adapter as a peer dependency and does not embed
+or pin a second copy of DSH's `llm-pi-ai` adapter. It reads the native settings
+namespace and uses DSH's stream middleware seam, which remains compatible with
+the stricter patch-name validation introduced in Desktop `0.2.2-rc.2`.
 
 ## Install
 
@@ -33,6 +40,15 @@ list, where its switch controls whether the router layer is active:
 
 - **Enabled:** compatible providers may use the Responses WebSocket transport.
 - **Disabled:** DSH unloads the router layer and restores the native adapter.
+
+### Upgrading from an earlier bundle release
+
+Update or reinstall the bundle when upgrading DSH, rather than granting a
+version-compatibility override to an older release. Earlier bundle releases
+replaced the native `llm-pi-ai` entry; DSH Desktop `0.2.2-rc.2` rejects that
+patch shape and it can leave native provider cards unavailable. The current
+bundle is a separate stream-middleware entry, so existing provider settings in
+**Settings > Models** remain owned and displayed by native DSH.
 
 ## Configure a provider
 

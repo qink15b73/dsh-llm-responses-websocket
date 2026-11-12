@@ -130,6 +130,37 @@ test("keeps native image preparation for WebSocket providers", () => {
   );
 });
 
+test("uses the pi-ai request-header waterfall without a native adapter handle", async () => {
+  const seen = [];
+  const adapter = createResponsesWebSocketRouter(
+    {
+      get: () => undefined,
+      waterfall(name, request, headers, next) {
+        seen.push({ name, request });
+        headers.set("x-request-hook", "applied");
+        return next();
+      },
+    },
+    () => ({ gateway: profile }),
+  );
+  const headers = await adapter.requestHeaders(
+    { provider: "gateway", model: "model-a" },
+    profile,
+  );
+
+  assert.equal(headers["x-request-hook"], "applied");
+  assert.deepEqual(seen, [
+    {
+      name: "llm-pi-ai/request-headers",
+      request: {
+        provider: "gateway",
+        model: "model-a",
+        baseURL: "https://gateway.example/v1",
+      },
+    },
+  ]);
+});
+
 test("streams a selected provider through the Responses WebSocket", async () => {
   const server = new WebSocketServer({ host: "127.0.0.1", port: 0 });
   await once(server, "listening");

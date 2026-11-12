@@ -1,2 +1,3 @@
-- id: llm-pi-ai
-  name: dsh-llm-responses-websocket
+- insert:
+    - id: llm-responses-websocket
+      name: dsh-llm-responses-websocket

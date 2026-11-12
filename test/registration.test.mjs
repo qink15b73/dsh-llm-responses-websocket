@@ -1,40 +1,66 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PiAiAdapter } from "@deepseek-ai/dsh-llm-pi-ai-native";
 import {
-  ResponsesWebSocketRouter,
-  interceptPiAiRegistration,
+  apply,
+  configuredPiAiProfiles,
+  resolvedPiAiProfiles,
 } from "../index.js";
 
-function nativeAdapter() {
-  return new PiAiAdapter({
-    profiles: () => new Map(),
-    resolveApiKey: async () => undefined,
-    auth: {},
-  });
-}
-
-test("wraps pi-ai registrations added after startup without changing other adapters", () => {
-  const calls = [];
-  const llm = {
-    registerAdapter(providers, adapter) {
-      calls.push({ providers, adapter });
-      return { replace() {} };
+function streamContext(profiles, adapter) {
+  let listener;
+  const ctx = {
+    llm: {
+      adapters: new Map([["gateway", { adapter }]]),
+    },
+    get(name) {
+      if (name !== "settings") return undefined;
+      return {
+        describe: () => [{ ns: "llm-pi-ai", value: { providers: profiles } }],
+      };
+    },
+    on(name, callback) {
+      assert.equal(name, "llm/stream");
+      listener = callback;
+      return () => {};
     },
   };
-  const ctx = { llm, get: () => undefined };
-  const original = llm.registerAdapter;
-  const restore = interceptPiAiRegistration(ctx, () => ({}));
-  const pi = nativeAdapter();
-  const unrelated = {};
+  apply(ctx);
+  return { ctx, stream: (...args) => listener(...args) };
+}
 
-  llm.registerAdapter(["later-provider"], pi);
-  llm.registerAdapter(["another-provider"], unrelated);
+test("reads the provider profiles owned by native pi-ai settings", () => {
+  const profiles = { gateway: { transport: "websocket" } };
+  const { ctx } = streamContext(profiles, {});
+  assert.equal(configuredPiAiProfiles(ctx), profiles);
+});
 
-  assert.deepEqual(calls[0].providers, ["later-provider"]);
-  assert.ok(calls[0].adapter instanceof ResponsesWebSocketRouter);
-  assert.equal(calls[1].adapter, unrelated);
+test("prefers a registered adapter's resolved profile map", () => {
+  const profiles = new Map([["gateway", { transport: "websocket" }]]);
+  const { ctx } = streamContext({}, { current: () => ({ profiles }) });
+  assert.equal(resolvedPiAiProfiles(ctx, "gateway"), profiles);
+});
 
-  restore();
-  assert.equal(llm.registerAdapter, original);
+test("intercepts selected calls through the stream waterfall and rechecks settings", () => {
+  const adapter = {};
+  const profiles = {
+    gateway: {
+      api: "openai-responses",
+      baseURL: "https://gateway.example/v1",
+      transport: "websocket",
+    },
+  };
+  const { stream } = streamContext(profiles, adapter);
+  let nativeCalls = 0;
+  const next = () => {
+    nativeCalls += 1;
+    return "native";
+  };
+
+  const selected = stream({ provider: "gateway", model: "model-a" }, next);
+  assert.equal(typeof selected[Symbol.asyncIterator], "function");
+  assert.equal(nativeCalls, 0);
+
+  profiles.gateway.transport = "auto";
+  assert.equal(stream({ provider: "gateway", model: "model-a" }, next), "native");
+  assert.equal(nativeCalls, 1);
 });
