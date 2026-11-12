@@ -171,7 +171,7 @@ export class ResponsesWebSocketRouter extends LlmAdapter {
   selectedProfile(provider) {
     const profile = profileFor(this.profiles(), provider);
     return usesCompatibleWebSocket(profile)
-      ? profileSnapshot(structuredClone(profile))
+      ? profileSnapshot(profile)
       : undefined;
   }
 

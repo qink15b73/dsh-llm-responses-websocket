@@ -54,6 +54,27 @@ test("only compatible Responses profiles select the WebSocket router", () => {
   );
 });
 
+test("selects a resolved native profile that contains non-cloneable adapter state", () => {
+  const profileWithAdapterState = {
+    ...profile,
+    credential: {
+      resolve: () => ({ apiKey: "not-used-by-selection" }),
+    },
+  };
+  const adapter = createResponsesWebSocketRouter(
+    { get: () => undefined },
+    () => new Map([["gateway", profileWithAdapterState]]),
+    piAdapter(),
+  );
+
+  assert.deepEqual(adapter.selectedProfile("gateway"), {
+    baseURL: profile.baseURL,
+    apiKeyEnv: profile.apiKeyEnv,
+    headers: {},
+    connectTimeoutMs: 15_000,
+  });
+});
+
 test("delegates non-WebSocket providers to pi-ai unchanged", async () => {
   const adapter = createResponsesWebSocketRouter(
     { get: () => undefined },
