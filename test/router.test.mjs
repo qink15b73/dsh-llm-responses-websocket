@@ -4,6 +4,7 @@ import { once } from "node:events";
 import { WebSocketServer } from "ws";
 import {
   createResponsesWebSocketRouter,
+  streamWebSocketWithHandshakeRetries,
   usesCompatibleWebSocket,
 } from "../router.js";
 
@@ -52,6 +53,38 @@ test("only compatible Responses profiles select the WebSocket router", () => {
     usesCompatibleWebSocket({ ...profile, api: "anthropic-messages" }),
     false,
   );
+});
+
+test("retries safe handshake failures with exponential backoff", async () => {
+  let attempts = 0;
+  const delays = [];
+  async function* handshake() {
+    attempts += 1;
+    if (attempts <= 4) {
+      const error = new Error("Opening handshake has timed out");
+      error.safeToFallback = true;
+      throw error;
+    }
+    yield { connected: true };
+  }
+
+  const chunks = [];
+  for await (const chunk of streamWebSocketWithHandshakeRetries(
+    handshake,
+    {},
+    undefined,
+    undefined,
+    (delayMs) => {
+      delays.push(delayMs);
+      return Promise.resolve();
+    },
+  )) {
+    chunks.push(chunk);
+  }
+
+  assert.equal(attempts, 5);
+  assert.deepEqual(delays, [1_000, 2_000, 4_000, 8_000]);
+  assert.deepEqual(chunks, [{ connected: true }]);
 });
 
 test("selects a resolved native profile that contains non-cloneable adapter state", () => {

@@ -9,8 +9,9 @@ const WEBSOCKET_PROTOCOLS = new Set([
   "openai-codex-responses",
 ]);
 const DEFAULT_CONNECT_TIMEOUT_MS = 15_000;
-const HANDSHAKE_RETRIES = 2;
-const HANDSHAKE_RETRY_DELAY_MS = 250;
+const HANDSHAKE_RETRIES = 4;
+const HANDSHAKE_RETRY_INITIAL_DELAY_MS = 1_000;
+const HANDSHAKE_RETRY_MAX_DELAY_MS = 8_000;
 const CALL_ID_MAX_LENGTH = 64;
 
 function profileFor(profiles, provider) {
@@ -142,7 +143,8 @@ export async function* streamWebSocketWithHandshakeRetries(
   streamFactory,
   options,
   retries = HANDSHAKE_RETRIES,
-  retryDelayMs = HANDSHAKE_RETRY_DELAY_MS,
+  initialRetryDelayMs = HANDSHAKE_RETRY_INITIAL_DELAY_MS,
+  sleep = wait,
 ) {
   for (let attempt = 0; ; attempt += 1) {
     try {
@@ -150,7 +152,11 @@ export async function* streamWebSocketWithHandshakeRetries(
       return;
     } catch (error) {
       if (error?.safeToFallback !== true || attempt >= retries) throw error;
-      if (retryDelayMs > 0) await wait(retryDelayMs);
+      const retryDelayMs = Math.min(
+        initialRetryDelayMs * 2 ** attempt,
+        HANDSHAKE_RETRY_MAX_DELAY_MS,
+      );
+      if (retryDelayMs > 0) await sleep(retryDelayMs);
     }
   }
 }

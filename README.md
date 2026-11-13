@@ -68,8 +68,11 @@ credential management system.
   `transport: websocket` use this router.
 - The WebSocket endpoint is derived from the provider base URL by appending
   `/responses` and converting `https`/`http` to `wss`/`ws`.
-- Only failures before a request frame is sent are retried. A request is never
-  replayed after it might have reached the provider.
+- Only failures before a request frame is sent are retried. Handshake failures
+  are retried four times after 1, 2, 4, and 8 seconds; a request is never
+  replayed after it might have reached the provider. Each connection attempt
+  uses the provider's `websocketConnectTimeoutMs` setting (15 seconds by
+  default).
 - Outbound function `call_id` values longer than 64 characters are
   deterministically shortened, preserving call/result correlation for gateways
   with that limit.
